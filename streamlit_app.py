@@ -1,4 +1,5 @@
 import os
+import random
 from datetime import datetime
 
 import streamlit as st
@@ -137,6 +138,7 @@ class MyWorkflow:
             ),
             "task_prompt": self.workflow_data.get(f"task_{task_id}_task_prompt", ""),
             "chat_history_section": chat_history_section,
+            "input_text": self.workflow_data.get("input_text", ""),
         }
         return inputs
 
@@ -144,17 +146,13 @@ class MyWorkflow:
         for task_id, task in enumerate(self.tasks, start=1):
             # Get task inputs and populate the prompt template
             inputs = self.get_task_input(task_id)
-            task.chat_prompt_template.messages = task.chat_prompt_template.format(
-                **inputs
-            )
 
             # Run the task
-            yield from task.stream()
+            task.set_task_id(task_id)
+            task_res = yield from task.stream(inputs, self.default_llm)
 
             # Update the workflow data with the task output
-            self.workflow_data[f"task_{task_id}_output"] = (
-                task.chat_prompt_template.messages
-            )
+            self.workflow_data[f"task_{task_id}_output"] = task_res.llm_output
 
 
 # Sidebar for task management
@@ -162,7 +160,13 @@ with st.sidebar:
     st.header("Add Workflow Task")
     system_context = st.text_area("System Context", height=100)
     task_prompt = st.text_area("Task Prompt", height=200)
-    if st.button("Add Task"):
+    col_add_task, col_sample_task = st.columns([1, 2])
+    if col_add_task.button("Add Task", type="primary"):
+        add_task(system_context, task_prompt)
+        st.rerun()
+    if col_sample_task.button("Add Example Task"):
+        system_context = f"Respond to everything as {random.choice(['Donald Trump', 'Cleopatra', 'Napoleon', 'Sherlock Holmes', 'Shakespeare'])}"
+        task_prompt = "What is the meaning of life?"
         add_task(system_context, task_prompt)
         st.rerun()
 
@@ -173,9 +177,8 @@ with col1:
     st.header("Workflow Tasks")
     if ss.tasks:
         for idx, task in enumerate(ss.tasks):
-            task_snippet = task.chat_prompt_template.to_string()[
-                :30
-            ]  # Show a snippet of the task
+            # Show a snippet of the task
+            task_snippet = task.chat_prompt_template.to_string()[:30]
             with st.expander(f"Task {idx + 1}: {task_snippet}..."):
                 st.text_area(
                     "System Context",
