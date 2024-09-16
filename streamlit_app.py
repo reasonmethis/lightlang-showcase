@@ -130,17 +130,13 @@ class MyWorkflow:
             chat_history_section = f"Here's the chat history so far:\n{chat_history}"
 
         # Set up inputs for the task
-        inputs = {
-            "current_date": self.workflow_data["current_date"],
-            "current_time": self.workflow_data["current_time"],
+        return self.workflow_data | {
             "system_context": self.workflow_data.get(
                 f"task_{task_id}_system_context", ""
             ),
             "task_prompt": self.workflow_data.get(f"task_{task_id}_task_prompt", ""),
             "chat_history_section": chat_history_section,
-            "input_text": self.workflow_data.get("input_text", ""),
         }
-        return inputs
 
     def stream(self):
         for task_id, task in enumerate(self.tasks, start=1):
@@ -257,9 +253,11 @@ with tabs[0]:
 
     if submit_button and query:
         results = search_with_serp_api([query])
-        ss.saved_searches.append(
-            (f"search_ref_{len(ss.saved_searches) + 1}", query, results)
-        )
+        ref_name = f"search_ref_{len(ss.saved_searches) + 1}"
+        ss.saved_searches.append((ref_name, query, results))
+
+        # Add the search results to the workflow data with the key ref_name
+        ss.workflow_data[ref_name] = results
 
     # Popover for Saved Searches
     st.subheader("Saved Searches")
@@ -280,9 +278,11 @@ with tabs[1]:
         # Perform the web scrape and store it in saved_scrapes
         scraped_data = get_content_from_urls([scrape_query])
         raw_text = scraped_data.link_data_dict.get(scrape_query).text
-        ss.saved_scrapes.append(
-            (f"scrape_ref_{len(ss.saved_scrapes) + 1}", scrape_query, raw_text)
-        )
+        ref_name = f"scrape_ref_{len(ss.saved_scrapes) + 1}"
+        ss.saved_scrapes.append((ref_name, scrape_query, raw_text))
+
+        # Add the scraped data to the workflow data with the key ref_name
+        ss.workflow_data[ref_name] = raw_text
 
     saved_scrape_options = [
         f"ref: {name} - domain: {scrape}" for name, scrape, _ in ss.saved_scrapes
