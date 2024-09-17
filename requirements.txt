@@ -1,4 +1,4 @@
-lightlang[all]~=0.4
+lightlang[all]==0.4.1
 python-dotenv~=1.0.1
 streamlit~=1.38
 requests

@@ -9,7 +9,6 @@ from lightlang.abilities.web import get_content_from_urls, search_with_serp_api
 from lightlang.llms.llm import LLM
 from lightlang.prompts.chat_prompt_template import ChatPromptTemplate
 from lightlang.tasks.task import LLMTask
-from lightlang.tasks.task_streaming import TaskEvent
 
 # Load environment variables
 load_dotenv()
@@ -118,6 +117,7 @@ class MyWorkflow:
         self.tasks = tasks
         self.default_llm = default_llm
         self.workflow_data = workflow_data
+        self.curr_task_id = None
 
     def get_task_input(self, task_id):
         # Task 1: No chat history
@@ -145,6 +145,7 @@ class MyWorkflow:
 
             # Run the task
             task.set_task_id(task_id)
+            self.curr_task_id = task_id
             task_res = yield from task.stream(inputs, self.default_llm)
 
             # Update the workflow data with the task output
@@ -224,11 +225,10 @@ with col2:
             result = ""
 
             for output in workflow.stream():
-                if isinstance(output, TaskEvent):
-                    if output.event == "BEGIN_TASK":
-                        result += f"### Task {workflow.task_id} Output:\n\n"
-                    elif output.event == "END_TASK":
-                        result += "\n\n---\n\n"
+                if output.event_type == "BEGIN_TASK":
+                    result += f"### Task {workflow.curr_task_id} Output:\n\n"
+                elif output.event_type == "END_TASK":
+                    result += "\n\n---\n\n"
                 elif output.content is not None:
                     result += output.content
                     result_placeholder.markdown(result)
